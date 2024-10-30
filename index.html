@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>पुरंदर विधानसभा निवडणूक २०२४: कोण जिंकेल?</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        header {
+            background-color: #333;
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+            font-size: 2em;
+        }
+        .container {
+            padding: 20px;
+            max-width: 800px;
+            margin: auto;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+        .candidate-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .candidate-table th, .candidate-table td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        .candidate-table th {
+            background-color: #333;
+            color: #fff;
+        }
+        .candidate-name {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .candidate-image {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+        }
+        .progress-bar {
+            background-color: #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            height: 10px;
+            margin-top: 8px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #4caf50;
+            width: 0;
+            transition: width 1s;
+        }
+        button {
+            padding: 5px 10px;
+            font-size: 0.9em;
+            cursor: pointer;
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        footer {
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            padding: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    पुरंदर विधानसभा निवडणूक २०२४: कोण जिंकेल?
+</header>
+
+<div class="container">
+    <h2>एकूण मते: <span id="total-votes"></span></h2>
+
+    <table class="candidate-table">
+        <thead>
+            <tr>
+                <th>उमेदवार</th>
+                <th>मते</th>
+                <th>टक्केवारी</th>
+                <th>मत द्या</th>
+            </tr>
+        </thead>
+        <tbody id="candidate-list">
+            <!-- Candidates will be inserted here by JavaScript -->
+        </tbody>
+    </table>
+</div>
+
+<footer>
+    आयोजित: <strong>अधिकृत निवडणूक मतदान संस्था</strong>
+</footer>
+
+<script>
+    // Candidate data
+    const candidates = [
+        { id: 1, name: "विजय सोपनराव शिवतारे", votes: 18511, img: "https://via.placeholder.com/50" },
+        { id: 2, name: "संभाजी सदाशिव झेंडे", votes: 9519, img: "https://via.placeholder.com/50" },
+        { id: 3, name: "गंगाराम जगदाळे", votes: 3417, img: "https://via.placeholder.com/50" },
+        { id: 4, name: "दिगंबर दुर्गाडे", votes: 5109, img: "https://via.placeholder.com/50" },
+        { id: 5, name: "संजय चंदुकाका जगताप", votes: 7816, img: "https://via.placeholder.com/50" },
+        { id: 6, name: "शंकरनाना हरपळे", votes: 515, img: "https://via.placeholder.com/50" },
+        { id: 7, name: "दत्तात्रय झुरंगे", votes: 402, img: "https://via.placeholder.com/50" }
+    ];
+
+    // Calculate and display total votes
+    function updateTotalVotes() {
+        const totalVotes = candidates.reduce((sum, candidate) => sum + candidate.votes, 0);
+        document.getElementById("total-votes").innerText = totalVotes;
+    }
+
+    // Display candidate details and percentages
+    function renderCandidates() {
+        const candidateList = document.getElementById("candidate-list");
+        candidateList.innerHTML = ""; // Clear current list
+
+        candidates.forEach(candidate => {
+            const row = document.createElement("tr");
+            const percentage = ((candidate.votes / getTotalVotes()) * 100).toFixed(2);
+            row.innerHTML = `
+                <td class="candidate-name">
+                    <img src="${candidate.img}" alt="${candidate.name}" class="candidate-image">
+                    ${candidate.name}
+                </td>
+                <td id="votes-${candidate.id}">${candidate.votes}</td>
+                <td id="percentage-${candidate.id}">${percentage}%</td>
+                <td><button onclick="vote(${candidate.id})" ${isVoted() ? "disabled" : ""}>Vote</button></td>
+            `;
+            candidateList.appendChild(row);
+        });
+    }
+
+    // Vote function to increment the vote count
+    function vote(candidateId) {
+        if (isVoted()) return; // Prevent voting if already voted
+
+        const candidate = candidates.find(c => c.id === candidateId);
+        if (!candidate) return;
+
+        // Increment vote and update DOM
+        candidate.votes += 1;
+        localStorage.setItem("voted", true);
+        disableAllButtons();
+        renderCandidates(); // Refresh candidate display
+        updateTotalVotes();
+    }
+
+    function getTotalVotes() {
+        return candidates.reduce((total, c) => total + c.votes, 0);
+    }
+
+    // Check if a user has already voted
+    function isVoted() {
+        return localStorage.getItem("voted") === "true";
+    }
+
+    // Disable all vote buttons after voting
+    function disableAllButtons() {
+        document.querySelectorAll("button").forEach(button => button.disabled = true);
+    }
+
+    // Initial display setup
+    updateTotalVotes();
+    renderCandidates();
+    if (isVoted()) disableAllButtons(); // Disable buttons if already voted
+</script>
+
+</body>
+</html>
