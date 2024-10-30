@@ -9,185 +9,208 @@
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f9;
+            background-color: #f5f5f5;
             color: #333;
         }
+
         header {
-            background-color: #333;
-            color: #fff;
-            padding: 20px;
+            background-color: #4CAF50;
+            color: white;
             text-align: center;
-            font-size: 2em;
+            padding: 1em 0;
         }
+
         .container {
-            padding: 20px;
             max-width: 800px;
-            margin: auto;
-            background-color: #fff;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             border-radius: 5px;
         }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
         .candidate-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
         }
+
         .candidate-table th, .candidate-table td {
-            padding: 12px;
-            text-align: center;
-            border-bottom: 1px solid #ddd;
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
         }
+
         .candidate-table th {
-            background-color: #333;
-            color: #fff;
+            background-color: #f2f2f2;
         }
+
         .candidate-name {
             display: flex;
             align-items: center;
-            gap: 15px;
         }
+
         .candidate-image {
             width: 50px;
             height: 50px;
             border-radius: 50%;
+            margin-right: 10px;
         }
-        .progress-bar {
-            background-color: #e0e0e0;
-            border-radius: 8px;
-            overflow: hidden;
-            position: relative;
-            height: 10px;
-            margin-top: 8px;
-        }
-        .progress-bar-fill {
-            height: 100%;
-            background-color: #4caf50;
-            width: 0;
-            transition: width 1s;
-        }
+
         button {
-            padding: 5px 10px;
-            font-size: 0.9em;
-            cursor: pointer;
-            background-color: #28a745;
-            color: #fff;
+            background-color: #4CAF50;
+            color: white;
             border: none;
+            padding: 10px 15px;
+            cursor: pointer;
             border-radius: 5px;
+            transition: background-color 0.3s;
         }
-        button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
+
+        button:hover {
+            background-color: #45a049;
         }
+
         footer {
-            background-color: #333;
-            color: #fff;
             text-align: center;
-            padding: 10px;
             margin-top: 20px;
+            padding: 10px 0;
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .message {
+            color: red;
+            text-align: center;
+            margin-bottom: 20px;
         }
     </style>
+    <!-- Include Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.8.1/firebase-app.js";
+        import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/9.8.1/firebase-database.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.8.1/firebase-analytics.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCAAgoczl4EWrIlCOahMcBBey3Ju2WllSQ",
+            authDomain: "purandarelection2024.firebaseapp.com",
+            projectId: "purandarelection2024",
+            storageBucket: "purandarelection2024.firebasestorage.app",
+            messagingSenderId: "597617490477",
+            appId: "1:597617490477:web:bada932aca8f3be845d6a4",
+            measurementId: "G-MS0FCEWD3M"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const database = getDatabase(app);
+
+        const candidates = [];
+        const candidatesRef = ref(database, 'candidates');
+        onValue(candidatesRef, (snapshot) => {
+            candidates.length = 0; // Clear candidates array
+            snapshot.forEach((childSnapshot) => {
+                const candidate = childSnapshot.val();
+                candidate.id = childSnapshot.key; // Assign ID
+                candidate.votes = candidate.votes || 0; // Ensure votes are initialized
+                candidates.push(candidate);
+            });
+            console.log("Fetched candidates:", candidates);
+            updateTotalVotes();
+            renderCandidates();
+        }, (error) => {
+            console.error("Error fetching candidates:", error);
+        });
+
+        function updateTotalVotes() {
+            const totalVotes = getTotalVotes();
+            document.getElementById("total-votes").innerText = totalVotes;
+        }
+
+        function renderCandidates() {
+            const candidateList = document.getElementById("candidate-list");
+            candidateList.innerHTML = ""; // Clear current list
+            const messageDiv = document.getElementById("message");
+            messageDiv.innerText = isVoted() ? "आपण आधीच मतदान केले आहे." : ""; // Display message if already voted
+
+            candidates.forEach(candidate => {
+                const percentage = getTotalVotes() > 0 ? ((candidate.votes / getTotalVotes()) * 100).toFixed(2) : 0;
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td class="candidate-name">
+                        <img src="${candidate.img && candidate.img.startsWith('http') ? candidate.img : 'https://static.vecteezy.com/system/resources/thumbnails/004/511/281/small/default-avatar-photo-placeholder-profile-picture-vector.jpg'}" alt="${candidate.name}" class="candidate-image">
+                        ${candidate.name}
+                    </td>
+                    <td id="votes-${candidate.id}">${candidate.votes}</td>
+                    <td id="percentage-${candidate.id}">${percentage}%</td>
+                    <td><button onclick="vote('${candidate.id}')" ${isVoted() ? "disabled" : ""}>Vote</button></td>
+                `;
+                candidateList.appendChild(row);
+            });
+        }
+
+        window.vote = function(candidateId) {
+            const candidate = candidates.find(c => c.id === candidateId);
+            if (!candidate) return;
+
+            candidate.votes += 1;
+            console.log(`Voting for candidate: ${candidate.name}, new vote count: ${candidate.votes}`);
+            set(ref(database, `candidates/${candidateId}/votes`), candidate.votes)
+                .then(() => {
+                    console.log(`Votes updated in Firebase for candidate ID: ${candidateId}`);
+                    localStorage.setItem("voted", true);
+                    disableAllButtons();
+                    renderCandidates(); // Refresh candidate display
+                    updateTotalVotes();
+                })
+                .catch((error) => {
+                    console.error("Error updating votes in Firebase: ", error);
+                });
+        }
+
+        function getTotalVotes() {
+            return candidates.reduce((total, c) => total + (c.votes || 0), 0); // Ensure no null votes
+        }
+
+        function isVoted() {
+            return localStorage.getItem("voted") === "true";
+        }
+
+        function disableAllButtons() {
+            document.querySelectorAll("button").forEach(button => {
+                button.disabled = true;
+            });
+        }
+    </script>
 </head>
 <body>
-
-<header>
-    पुरंदर विधानसभा निवडणूक २०२४: कोण जिंकेल?
-</header>
-
-<div class="container">
-    <h2>एकूण मते: <span id="total-votes"></span></h2>
-
-    <table class="candidate-table">
-        <thead>
-            <tr>
-                <th>उमेदवार</th>
-                <th>मते</th>
-                <th>टक्केवारी</th>
-                <th>मत द्या</th>
-            </tr>
-        </thead>
-        <tbody id="candidate-list">
-            <!-- Candidates will be inserted here by JavaScript -->
-        </tbody>
-    </table>
-</div>
-
-<footer>
-    आयोजित: <strong>अधिकृत निवडणूक मतदान संस्था</strong>
-</footer>
-
-<script>
-    // Candidate data
-    const candidates = [
-        { id: 1, name: "विजय सोपनराव शिवतारे", votes: 18511, img: "https://via.placeholder.com/50" },
-        { id: 2, name: "संभाजी सदाशिव झेंडे", votes: 9519, img: "https://via.placeholder.com/50" },
-        { id: 3, name: "गंगाराम जगदाळे", votes: 3417, img: "https://via.placeholder.com/50" },
-        { id: 4, name: "दिगंबर दुर्गाडे", votes: 5109, img: "https://via.placeholder.com/50" },
-        { id: 5, name: "संजय चंदुकाका जगताप", votes: 7816, img: "https://via.placeholder.com/50" },
-        { id: 6, name: "शंकरनाना हरपळे", votes: 515, img: "https://via.placeholder.com/50" },
-        { id: 7, name: "दत्तात्रय झुरंगे", votes: 402, img: "https://via.placeholder.com/50" }
-    ];
-
-    // Calculate and display total votes
-    function updateTotalVotes() {
-        const totalVotes = candidates.reduce((sum, candidate) => sum + candidate.votes, 0);
-        document.getElementById("total-votes").innerText = totalVotes;
-    }
-
-    // Display candidate details and percentages
-    function renderCandidates() {
-        const candidateList = document.getElementById("candidate-list");
-        candidateList.innerHTML = ""; // Clear current list
-
-        candidates.forEach(candidate => {
-            const row = document.createElement("tr");
-            const percentage = ((candidate.votes / getTotalVotes()) * 100).toFixed(2);
-            row.innerHTML = `
-                <td class="candidate-name">
-                    <img src="${candidate.img}" alt="${candidate.name}" class="candidate-image">
-                    ${candidate.name}
-                </td>
-                <td id="votes-${candidate.id}">${candidate.votes}</td>
-                <td id="percentage-${candidate.id}">${percentage}%</td>
-                <td><button onclick="vote(${candidate.id})" ${isVoted() ? "disabled" : ""}>Vote</button></td>
-            `;
-            candidateList.appendChild(row);
-        });
-    }
-
-    // Vote function to increment the vote count
-    function vote(candidateId) {
-        if (isVoted()) return; // Prevent voting if already voted
-
-        const candidate = candidates.find(c => c.id === candidateId);
-        if (!candidate) return;
-
-        // Increment vote and update DOM
-        candidate.votes += 1;
-        localStorage.setItem("voted", true);
-        disableAllButtons();
-        renderCandidates(); // Refresh candidate display
-        updateTotalVotes();
-    }
-
-    function getTotalVotes() {
-        return candidates.reduce((total, c) => total + c.votes, 0);
-    }
-
-    // Check if a user has already voted
-    function isVoted() {
-        return localStorage.getItem("voted") === "true";
-    }
-
-    // Disable all vote buttons after voting
-    function disableAllButtons() {
-        document.querySelectorAll("button").forEach(button => button.disabled = true);
-    }
-
-    // Initial display setup
-    updateTotalVotes();
-    renderCandidates();
-    if (isVoted()) disableAllButtons(); // Disable buttons if already voted
-</script>
-
+    <header>
+        <h1>पुरंदर विधानसभा निवडणूक २०२४: कोण जिंकेल?</h1>
+    </header>
+    <div class="container">
+        <h2>उपलब्ध उमेदवार</h2>
+        <p>Total Votes: <span id="total-votes">0</span></p>
+        <div class="message" id="message"></div>
+        <table class="candidate-table">
+            <thead>
+                <tr>
+                    <th>उमेदवार</th>
+                    <th>मत</th>
+                    <th>प्रतिशत</th>
+                    <th>मत द्या</th>
+                </tr>
+            </thead>
+            <tbody id="candidate-list">
+                <!-- Candidate rows will be injected here -->
+            </tbody>
+        </table>
+    </div>
+    <footer>
+        <p>&copy; सदर पोल माहितीसाठी बनवण्यात आला आहे हे वास्तविक मतदान नाही </p>
+    </footer>
 </body>
 </html>
